@@ -3,9 +3,11 @@ SSO专题
 |**版本**|日期|修改描述|
 |:-:|:-:|:-|
 |v0.1|2017.6.21|新作成|
+|v0.2|2018.5.9|方案演进|
 ---
 # 摘要
-SDP-UC提供帐号、认证服务，是101帐号的认证中心，业务或组件通过认证服务提供的MAC机制，实现从客户端到服务端的安全访问。同时UC提供基础认证相关能力支持，其中SSO是比较重要的一个功能。通过分析目前SDP微服务化，参考SAML2.0协议，特别是业界经典的开源CAS实现，结合MAC机制，提出SDP的SSO方案。
+SDP-UC提供帐号、认证服务，是101帐号的认证中心，业务或组件通过认证服务提供的MAC机制，实现从客户端到服务端的安全访问。其中SSO是比较重要的一个功能。
+参考SAML2.0协议，结合开源CAS实现，依赖端到端认证MAC机制，提出SDP的SSO方案。
 
 # 背景
 ## 微服务化
@@ -34,25 +36,38 @@ SAML(Security Assertion Markup Language) 安全断言标记语言是由标识化
 ### SAML的实现-CAS
 其中CAS是最广泛应用的的开源单点登录产品，并支持了SAML。CAS （ Central Authentication Service ） 是 Yale 大学发起的一个企业级的、开源的项目，旨在为 Web 应用系统提供一种可靠的单点登录解决方法，在 2004 年 12 月正式成为 JA-SIG 的一个项目。
 ![](images/casbase.png)
-![](images/cassequence.png)
 
 # web单点登录
-## 前后端数据分离模式
-后端提供访问接口，前端使用ajax拉取数据，使用vue绑定数据
-- 多组件登录
-  - 产品依赖web组件统一由应用工厂进行配置
-
-## servlet模式
-直接由后端服务提供,通过el，jstl，freemark等后端数据生成页面再响应到前端
+## 单体应用
 - 基础流程
-
+同CAS访问流程，用户访问业务服务时，业务服务器校验session，无效情况下，通过重定向到认证服务器，进行认证，如认证服务session有效，直接颁发token至用户浏览器，业务服务器校验此token，通过则存储Session，并将sessionID返回至浏览器，存储在浏览器的cookie中
+- 流程图
+![](images/baseSSO.png)
+- SAML实现
+  - 采用XML标准的SAML安全断言语言，进行系统间数据交换认证
+  - 有效登录凭据或有效会话存储于Cookie（如：cas的tgt，tgc，st亦存储于Cookie），以验证用户身份
+## 微服务模式
+在SSO上与单体应用典型差异
+1、前后端分离
+2、微服务对应的web组件不提供session机制
+3、一个web组件可能应用于不同的产品
+### 典型微服务SSO方案
+- session共享
+  - 各微服务均基于 Session 的认证。默认Session存储在应用服务器中，并且将SessionID返回到客户端，存储在浏览器的Cookie中。
+  - 通过 Session 复制方案来解决（可打开web中间件Session复制能力）。
+  - 独立Session存储，如 Memchached、Redis 等
+- token【目前方案】
+  - 认证服务颁发token
+  - token会附加到每个请求上，为微服务提供用户身份验证
+  - 登出依赖token过期机制
+- token+网关
+   - 通过网关，拦截认证信息，统一进行session控制
+   - 请求时，网关存储sessionid与token之间关系
 ## 混合场景
-
-## 独立管理后台
-- 管理后台的jsessionid与adminsessionid
 
 
 # 移动端单点登录 
 
-iOS:uc://?username=${username}&token=${token}
-Android: com.kd.uc://?username=${username}&token=${token}
+iOS:uccomponent://?username=${username}&token=${token}
+
+Android: com.nd.uccomponent://?username=${username}&token=${token}
