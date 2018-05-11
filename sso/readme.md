@@ -3,11 +3,11 @@ SSO专题
 |**版本**|日期|修改描述|
 |:-:|:-:|:-|
 |v0.1|2017.6.21|新作成|
-|v0.2|2018.5.9|方案演进|
+|v0.2|2018.5.9|增加相关方案实现细节|
 ---
 # 摘要
 SDP-UC提供帐号、认证服务，是101帐号的认证中心，业务或组件通过认证服务提供的MAC机制，实现从客户端到服务端的安全访问。其中SSO是比较重要的一个功能。
-参考SAML2.0协议，结合开源CAS实现，依赖端到端认证MAC机制，提出SDP的SSO方案。
+参考SAML2.0协议，结合开源CAS实现，提出SDP的SSO方案。
 
 # 背景
 ## 微服务化
@@ -45,7 +45,7 @@ SAML(Security Assertion Markup Language) 安全断言标记语言是由标识化
 ![](images/baseSSO.png)
 - SAML实现
   - 采用XML标准的SAML安全断言语言，进行系统间数据交换认证
-  - 有效登录凭据或有效会话存储于Cookie（如：cas的tgt，tgc，st亦存储于Cookie），以验证用户身份
+  - 有效登录凭据或有效会话存储于Cookie（如：CAS的tgt，tgc，st亦存储于Cookie），以验证用户身份
 ## 微服务模式
 在SSO上与单体应用典型差异
 1、前后端分离
@@ -56,18 +56,38 @@ SAML(Security Assertion Markup Language) 安全断言标记语言是由标识化
   - 各微服务均基于 Session 的认证。默认Session存储在应用服务器中，并且将SessionID返回到客户端，存储在浏览器的Cookie中。
   - 通过 Session 复制方案来解决（可打开web中间件Session复制能力）。
   - 独立Session存储，如 Memchached、Redis 等
+![](images/session共享.png)
 - token【目前方案】
   - 认证服务颁发token
   - token会附加到每个请求上，为微服务提供用户身份验证
   - 登出依赖token过期机制
+![](images/token验证.png)
+典型流程1-基础流程
+![](images/Ucsso基础流程.png)
+典型流程2-登录实现
+![](images/Ucjssdk登录.png)
 - token+网关
    - 通过网关，拦截认证信息，统一进行session控制
    - 请求时，网关存储sessionid与token之间关系
+![](images/token+网关.png)
 ## 混合场景
-
-
+- 基本流程
+![](images/混合场景SSO.png)
+- 适用场景
+  - 从微服务模式域或单体应用域跳转至单体应用域
+  - 不足：页面会闪烁跳转
+  - 改进：由UC.101进行通知
+![](images/Ucbizsso.png)
 # 移动端单点登录 
+- 流程图
+![](images/移动端sso时序图.jpg)
+- 约束条件
+  - android：ShareUserId,需要使用同一份签名文件
+  - iOS：Keychain Groups，且同一个开发者帐号打包（跨公司app不通）
 
-iOS:uccomponent://?username=${username}&token=${token}
+## 第三方登录方式
 
-Android: com.nd.uccomponent://?username=${username}&token=${token}
+- 启动后从第三方应用获取token及openid
+  - Android: com.nd.uccomponent://?openid=${openid}&token=${token}
+  - iOS:uccomponent://?openid=${openid}&token=${token}
+
